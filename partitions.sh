@@ -62,7 +62,7 @@ fi
 
 # Present a menu for the user to select which devices to partition
 echo "Detected storage devices:"
-devices=($(lsblk -dn -o name -I 8,9,179 | grep -v 'loop\|^[sr]'))
+devices=($(lsblk -dn -o name -I 8,9,179,253,259 | grep -v 'loop\|^[sr]'))
 for i in "${!devices[@]}"; do
     echo "$((i+1))) /dev/${devices[i]}"
 done
