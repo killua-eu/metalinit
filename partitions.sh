@@ -45,9 +45,13 @@ partition_device() {
     local swap_end="100%"
 
     parted -s ${device} mkpart EFI fat32 ${efi_start}MiB ${efi_end}MiB
+    parted -s ${device} name 1 "efi${2}"
     parted -s ${device} mkpart boot ext4 ${boot_start}MiB ${boot_end}MiB
+    parted -s ${device} name 2 "boot${2}"
     parted -s ${device} mkpart primary ${primary_start}MiB ${primary_end}MiB
+    parted -s ${device} name 3 "prim${2}"
     parted -s ${device} mkpart swap linux-swap ${swap_start}MiB ${swap_end}
+    parted -s ${device} name 4 "swap${2}"
 
     mkfs.fat -F32 ${efi_partition}
     mkfs.ext4 ${boot_partition}
@@ -74,7 +78,7 @@ selection=($input)
 # Validate selection and partition the selected devices
 for i in "${selection[@]}"; do
     if [[ $i =~ ^[0-9]+$ ]] && [[ "$i" -ge 1 ]] && [[ "$i" -le "${#devices[@]}" ]]; then
-        partition_device "/dev/${devices[$((i-1))]}"
+        partition_device "/dev/${devices[$((i-1))]}" "${i}"
     else
         echo "Invalid selection: $i"
     fi
