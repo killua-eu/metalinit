@@ -37,17 +37,17 @@ partition_device() {
     local efi_start="1"
     local efi_end=$((${efi_start}+${EFI_SIZE}))
     local boot_partition="${device}2"
-    local boot_start=${efi_end}
+    local boot_start="${efi_end}"
     local boot_end=$((${boot_start} + ${BOOT_SIZE}))
-    local primary_start=${boot_end}
+    local primary_start="${boot_end}"
     local primary_end="100%-${BOOT_SIZE}"
-    local swap_start=${primary_end}
+    local swap_start="${primary_end}"
     local swap_end="100%"
 
     parted -s ${device} mkpart EFI fat32 ${efi_start}MiB ${efi_end}MiB
     parted -s ${device} mkpart boot ext4 ${boot_start}MiB ${boot_end}MiB
     parted -s ${device} mkpart primary ${primary_start}MiB ${primary_end}MiB
-    parted -s ${device} mkpart swap linux-swap ${swap_start}MiB 100%
+    parted -s ${device} mkpart swap linux-swap ${swap_start}MiB ${swap_end}
 
     mkfs.fat -F32 ${efi_partition}
     mkfs.ext4 ${boot_partition}
