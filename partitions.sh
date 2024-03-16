@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Default partition sizes in GiB
-EFI_SIZE=${EFI_SIZE:-1}
-BOOT_SIZE=${BOOT_SIZE:-1}
-SWAP_SIZE=${SWAP_SIZE:-32}
+# Default partition sizes in MiB
+EFI_SIZE=${EFI_SIZE:-1024}
+BOOT_SIZE=${BOOT_SIZE:-2048}
+SWAP_SIZE=${SWAP_SIZE:-32768}
 
 show_help() {
     echo "Disk Partitioning Script"
@@ -14,12 +14,12 @@ show_help() {
     echo "  -h, --help          Show this help message."
     echo
     echo "Environment variables:"
-    echo "  EFI_SIZE            Size of the EFI partition in GiB (default: 1)"
-    echo "  BOOT_SIZE           Size of the /boot partition in GiB (default: 1)"
-    echo "  SWAP_SIZE           Size of the swap partition in GiB (default: 32)"
+    echo "  EFI_SIZE            Size of the EFI partition in MiB (default: 1024)"
+    echo "  BOOT_SIZE           Size of the /boot partition in MiB (default: 2048)"
+    echo "  SWAP_SIZE           Size of the swap partition in MiB (default: 32768)"
     echo
     echo "Example:"
-    echo "  EFI_SIZE=1 BOOT_SIZE=2 SWAP_SIZE=4 sudo $0"
+    echo "  EFI_SIZE=1024 BOOT_SIZE=2048 SWAP_SIZE=40000 sudo $0"
 }
 
 # Function to create partitions on a given device
@@ -40,14 +40,14 @@ partition_device() {
     local boot_start=${efi_end}
     local boot_end=$((${boot_start} + ${BOOT_SIZE}))
     local primary_start=${boot_end}
-    local primary_end="100%-${BOOT_SIZE}GiB"
+    local primary_end="100%-${BOOT_SIZE}"
     local swap_start=${primary_end}
     local swap_end="100%"
 
-    parted -s ${device} mkpart EFI fat32 ${efi_start} ${efi_end}
-    parted -s ${device} mkpart boot ext4 ${boot_start} ${boot_end}
-    parted -s ${device} mkpart primary ${primary_start} ${primary_end}
-    parted -s ${device} mkpart swap linux-swap ${swap_start} 100%
+    parted -s ${device} mkpart EFI fat32 ${efi_start}MiB ${efi_end}MiB
+    parted -s ${device} mkpart boot ext4 ${boot_start}MiB ${boot_end}MiB
+    parted -s ${device} mkpart primary ${primary_start}MiB ${primary_end}MiB
+    parted -s ${device} mkpart swap linux-swap ${swap_start}MiB 100%
 
     mkfs.fat -F32 ${efi_partition}
     mkfs.ext4 ${boot_partition}
@@ -73,7 +73,7 @@ selection=($input)
 
 # Validate selection and partition the selected devices
 for i in "${selection[@]}"; do
-    if [[ $i =~ ^[0-9]+$ ]] && [ "$i" -ge 1 ] && [ "$i" -le "${#devices[@]}" ]]; then
+    if [[ $i =~ ^[0-9]+$ ]] && [[ "$i" -ge 1 ]] && [[ "$i" -le "${#devices[@]}" ]]; then
         partition_device "/dev/${devices[$((i-1))]}"
     else
         echo "Invalid selection: $i"
