@@ -102,6 +102,64 @@ partition_device() {
     echo "${device} partitioned."
 }
 
+prepare_fs() {
+  echo "Sensing required devices ... "
+  if [ ! -b "/dev/mapper/crypt1" ]; then echo "[FAIL] Cannot find /dev/mapper/crypt1" ; exit 1; fi;
+  if [ ! -b "/dev/mapper/crypt2" ]; then echo "[FAIL] Cannot find /dev/mapper/crypt2" ; exit 1; fi;
+  if [ ! -b "/dev/disk/by-partlabel/boot1" ]; then echo "[FAIL] Cannot find /dev/disk/by-partlabel/boot1" ; exit 1; fi;
+  if [ ! -b "/dev/disk/by-partlabel/boot2" ]; then echo "[FAIL] Cannot find /dev/disk/by-partlabel/boot2" ; exit 1; fi;
+
+  echo "Preparing BTRFS RAIDs"
+  sudo mkfs.btrfs -m raid1 -d raid1 /dev/disk/by-partlabel/boot1 /dev/disk/by-partlabel/boot2 -f
+  sudo mkfs.btrfs -m raid1 -d raid1 /dev/mapper/crypt1 /dev/mapper/crypt2 -f
+  sudo mount -o subvolid=5,defaults,compress=zstd:1,discard=async /dev/mapper/crypt1 /mnt
+  echo "Creating subvols"
+  sudo btrfs subvolume create /mnt/@
+  sudo btrfs subvolume create /mnt/@home
+  sudo btrfs subvolume create /mnt/@varlog
+  sudo btrfs subvolume create /mnt/@snapshots
+  sudo btrfs subvolume create /mnt/@tmp
+  sudo umount /mnt
+}
+
+
+remount_fs() {
+  echo "Checking for devices"
+  if [ ! -b "/dev/mapper/crypt1" ]; then sudo cryptsetup open /dev/disk/by-partlabel/prim1 crypt1 --type luks2 --key-slot=0 <<< "${CRYPT_PWD}"; fi;
+  if [ ! -b "/dev/mapper/crypt2" ]; then sudo cryptsetup open /dev/disk/by-partlabel/prim2 crypt2 --type luks2 --key-slot=0 <<< "${CRYPT_PWD}"; fi;
+  if [ ! -b "/dev/mapper/crypt1" ]; then echo "[FAIL] Cannot find /dev/mapper/crypt1" ; exit 1; fi;
+  if [ ! -b "/dev/mapper/crypt2" ]; then echo "[FAIL] Cannot find /dev/mapper/crypt2" ; exit 1; fi;
+  echo "Remounting for chroot"
+  sudo mount -o subvol=@,compress=zstd /dev/mapper/crypt1 /mnt
+  sudo mkdir -p /mnt/{boot,home,var,snapshots,tmp}
+  sudo mkdir -p /mnt/var/log
+  sudo mount -o subvol=@home,compress=zstd /dev/mapper/crypt1 /mnt/home
+  sudo mount -o subvol=@varlog,compress=zstd /dev/mapper/crypt1 /mnt/var/log
+  sudo mount -o subvol=@snapshots,compress=zstd /dev/mapper/crypt1 /mnt/snapshots
+  sudo mount -o subvol=@tmp,compress=zstd /dev/mapper/crypt1 /mnt/tmp
+  sudo mount /dev/disk/by-partlabel/boot1 /mnt/boot
+  sudo mkdir -p /mnt/boot/efi
+  sudo mount /dev/disk/by-partlabel/efi1 /mnt/boot/efi
+}
+
+prepare_pkgs() {
+  echo "Genfstab and debootstrap"
+  sudo apt update
+  sudo apt install -y arch-install-scripts debootstrap
+  sudo debootstrap --arch amd64 noble /mnt http://archive.ubuntu.com/ubuntu/
+  sudo genfstab -U /mnt | sudo tee -a /mnt/etc/fstab > /dev/null
+}
+
+do_chroot() {
+  echo "Chrooting ..."
+  for i in /dev /dev/pts /proc /sys /run; do sudo mount -B $i /mnt$i; done
+  sudo cp -r ./devices.tmp /mnt/root/devices.tmp
+  sudo cp -r ./install.sh /mnt/root/install.sh
+  sudo chroot /mnt
+}
+
+
+
 # Check for help option
 if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
     show_help
@@ -120,15 +178,22 @@ read -p "Enter the numbers of the devices you want to partition (separated by sp
 selection=($input)
 echo "Partitioning with EFI_SIZE ${EFI_SIZE}, BOOT_SIZE=${BOOT_SIZE}, SWAP_SIZE=${SWAP_SIZE}"
 # Validate selection and partition the selected devices
+echo "" > ./devices.tmp;
 for i in "${selection[@]}"; do
     if [[ $i =~ ^[0-9]+$ ]] && [[ "$i" -ge 1 ]] && [[ "$i" -le "${#devices[@]}" ]]; then
         partition_device "/dev/${devices[$((i-1))]}" "${i}"
+        echo "/dev/${devices[$((i-1))]}" >> ./devices.tmp
     else
         echo "Invalid selection: $i"
     fi
 done
 
 echo "Partitioning complete."
+
+prepare_fs;
+remount_fs;
+prepare_pkgs;
+do_chroot;
 
 
 

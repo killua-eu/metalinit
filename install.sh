@@ -9,7 +9,7 @@ apt update -y
 apt install -y linux-{,image-,headers-}generic linux-firmware
 #linux-generic-hwe-22.04 linux-headers-generic-hwe-22.04 initramfs-tools cryptsetup
 #cryptsetup-initramfs dropbear-initramfs efibootmgr keyutils btrfs-progs grub-efi-amd64-signed grub-pc zstd curl wget command-not-found parted ubuntu-server mc
-apt install -y grub2-common grub-efi-amd64 dropbear-initramfs cryptsetup cryptsetup-initramfs efibootmgr keyutils btrfs-progs zstd curl wget parted command-not-found
+apt install -y grub2-common grub-efi-amd64 dropbear-initramfs cryptsetup cryptsetup-initramfs efibootmgr keyutils btrfs-progs zstd curl wget parted command-not-found ssh-import-id
 apt install -y mc
 ssh-import-id gh:killua-eu
 ssh-import-id gh:killua-eu -o /etc/dropbear/initramfs/authorized_keys
@@ -26,14 +26,31 @@ if ! grep -Fxq "$OPTIONS_LINE" "$FILE_PATH"; then
     echo "$OPTIONS_LINE" | sudo tee -a "$FILE_PATH" > /dev/null
 fi
 
+echo "# <target name>	<source device>		<key file>	<options>" > /etc/crypttab
+echo "crypt1 UUID=$(blkid -s UUID -o value /dev/disk/by-partlabel/prim1 | tr -d '\n') none luks,discard" >> /etc/crypttab
+echo "crypt2 UUID=$(blkid -s UUID -o value /dev/disk/by-partlabel/prim2 | tr -d '\n') none luks,discard" >> /etc/crypttab
+
+update-grub
 update-initramfs -u -k all
+grub-install /dev/vda # !!!!!!
+grub-install /dev/vdb # !!!!!!
 grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=Ubuntu
 update-grub
 
-echo "# <target name>	<source device>		<key file>	<options>" > /etc/crypttab
-echo "cryptlvm UUID=$(blkid -s UUID -o value /dev/disk/by-partlabel/prim1 | tr -d '\n') none luks" >> /etc/crypttab
-echo "cryptlvm UUID=$(blkid -s UUID -o value /dev/disk/by-partlabel/prim2 | tr -d '\n') none luks" >> /etc/crypttab
 
-echo "UUID=$(blkid -s UUID -o value /dev/disk/by-partlabel/boot1 | tr -d '\n') /boot ext4 defaults 0 2" >> /etc/fstab
-echo "UUID=$(blkid -s UUID -o value /dev/disk/by-partlabel/efi1  | tr -d '\n') /boot/efi vfat defaults 0 1" >> /etc/fstab
-echo "your_hostname" > /etc/hostname
+FIRSTUSER="killua"
+SETHOSTNAME="myhost"
+IMPORTSSH="gh:killua-eu"
+echo "${SETHOSTNAME}" > /etc/hostname
+sudo useradd ${FIRSTUSER} -mG users,sudo,adm,plugdev,lxd -s /bin/bash
+ssh-import-id $IMPORTSSH -o /home/${FIRSTUSER}/.ssh/authorized_keys
+
+# After first boot
+timedatectl set-timezone Europe/Prague
+systemctl enable fstrim.timer
+systemctl enable systemd-timesyncd
+hostnamectl status
+hostnamectl set-hostname ${SETHOSTNAME}
+
+
+
