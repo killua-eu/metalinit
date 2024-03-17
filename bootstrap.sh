@@ -1,9 +1,10 @@
 #!/bin/bash
 
-[[ -b "/dev/mapper/crypt1" ]] || echo "[FAIL] Cannot find /dev/mapper/crypt1" ; exit 1;
-[[ -b "/dev/mapper/crypt2" ]] || echo "[FAIL] Cannot find /dev/mapper/crypt2" ; exit 1;
-[[ -b "/dev/disk/by-partlabel/boot1" ]] || echo "[FAIL] Cannot find /dev/disk/by-partlabel/boot1" ; exit 1;
-[[ -b "/dev/disk/by-partlabel/boot1" ]] || echo "[FAIL] Cannot find /dev/disk/by-partlabel/boot1" ; exit 1;
+echo "Sensing required devices ... "
+if [ ! -b "/dev/mapper/crypt1" ]; then echo "[FAIL] Cannot find /dev/mapper/crypt1" ; exit 1; fi;
+if [ ! -b "/dev/mapper/crypt2" ]; then echo "[FAIL] Cannot find /dev/mapper/crypt2" ; exit 1; fi;
+if [ ! -b "/dev/disk/by-partlabel/boot1" ]; then echo "[FAIL] Cannot find /dev/disk/by-partlabel/boot1" ; exit 1; fi;
+if [ ! -b "/dev/disk/by-partlabel/boot1" ]; then echo "[FAIL] Cannot find /dev/disk/by-partlabel/boot1" ; exit 1; fi;
 
 echo "Preparing BTRFS RAIDs"
 sudo mkfs.btrfs -m raid1 -d raid1 /dev/disk/by-partlabel/boot1 /dev/disk/by-partlabel/boot2 -f
