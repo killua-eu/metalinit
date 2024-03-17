@@ -37,11 +37,11 @@ ssh-import-id "${IMPORT_SSH}" -o /home/installer/.ssh/authorized_keys
 
 # Function to create partitions on a given device
 partition_device() {
-             device=$1
-    echo "Partitioning ${device}..."
-
-    # Wipe existing partition table
+     local device=$1
+    echo "Wiping ${device}..."
     wipefs -a "${device}"
+
+    echo "Partitioning ${device}..."
 
     # Creating new GPT partition table
     parted -s "${device}" mklabel gpt
@@ -53,29 +53,26 @@ partition_device() {
     # - p3: /boot, btrfs-raid1 unencrypted
     # - p4: /, btrfs-raid1 on a luks2 device (/dev/mapper/$ROOTx_crypt)
 
-             spacer_start="1"
-             spacer_end="2"
-             efi_partition="${device}2"
-             efi_start="${spacer_end}"
-             efi_end=$((efi_start + EFI_SIZE))
-             boot_partition="${device}3"
-             boot_start="${efi_end}"
-             boot_end=$((boot_start + BOOT_SIZE))
-             swap_start="${boot_end}"
-             swap_end=$((swap_start + SWAP_SIZE))
-             primary_start="${swap_end}"
-             primary_end="100%"
+     local spacer_start="1"
+     local spacer_end="2"
+     local efi_partition="${device}2"
+     local efi_start="${spacer_end}"
+     local efi_end=$((efi_start + EFI_SIZE))
+     local boot_partition="${device}3"
+     local boot_start="${efi_end}"
+     local boot_end=$((boot_start + BOOT_SIZE))
+     local swap_start="${boot_end}"
+     local swap_end=$((swap_start + SWAP_SIZE))
+     local primary_start="${swap_end}"
+     local primary_end="100%"
 
-    echo "    >> p1"
+    echo "    >> Setting up partitions"
     sudo parted -s "${device}" mkpart '""' ${spacer_start}MiB ${spacer_end}MiB
-    echo "    >> p2"
     sudo parted -s "${device}" mkpart EFI fat32 ${efi_start}MiB ${efi_end}MiB
-    echo "    >> p3"
     sudo parted -s "${device}" mkpart boot ${boot_start}MiB ${boot_end}MiB
-    echo "    >> p4"
     sudo parted -s "${device}" mkpart swap linux-swap ${swap_start}MiB ${swap_end}MiB
-    echo "    >> p5"
     sudo parted -s "${device}" mkpart primary ${primary_start}MiB ${primary_end}
+
     echo "    >> Setting up partition names"
     sudo parted -s "${device}" name 1 "bios${2}"
     sudo parted -s "${device}" name 2 "efi${2}"
