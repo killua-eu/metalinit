@@ -7,7 +7,8 @@ SWAP_SIZE=${SWAP_SIZE:-32768}
 IMPORT_SSH=${IMPORT_SSH:-gh:killua-eu}
 
 if [ -z "${CRYPT_PWD}" ]; then
-    echo "Please pass CRYPT_PWD Env var."
+    echo "CRYPT_PWD ENV variable not set!"
+    show_help
     exit 1
 fi
 
@@ -25,14 +26,16 @@ show_help() {
     echo "  EFI_SIZE            Size of the EFI partition in MiB (default: 1024)"
     echo "  BOOT_SIZE           Size of the /boot partition in MiB (default: 2048)"
     echo "  SWAP_SIZE           Size of the swap partition in MiB (default: 32768)"
+    echo "  CRYPT_PWD           MANDATORY luks2 crypt password."
+    echo "  IMPORT_SSH          Import ssh keys (example: gh:GithubUser)."
     echo
     echo "Example:"
-    echo "  EFI_SIZE=1024 BOOT_SIZE=2048 SWAP_SIZE=40000 sudo $0"
+    echo "  EFI_SIZE=1024 BOOT_SIZE=2048 SWAP_SIZE=40000 CRYPT_PWD='secret' sudo $0"
 }
 
 # Function to create partitions on a given device
 partition_device() {
-    local device=$1
+             device=$1
     echo "Partitioning ${device}..."
 
     # Wipe existing partition table
@@ -48,25 +51,25 @@ partition_device() {
     # - p3: /boot, btrfs-raid1 unencrypted
     # - p4: /, btrfs-raid1 on a luks2 device (/dev/mapper/$ROOTx_crypt)
 
-    local spacer_start="1"
-    local spacer_end="2"
-    local efi_partition="${device}2"
-    local efi_start=${spacer_end}
-    local efi_end=$((${efi_start}+${EFI_SIZE}))
-    local boot_partition="${device}3"
-    local boot_start=${efi_end}
-    local boot_end=$((${boot_start} + ${BOOT_SIZE}))
-    local swap_start=${boot_end}
-    local swap_end=$((${swap_start} + ${SWAP_SIZE}))
-    local primary_start=${swap_end}
-    local primary_end="100%"
+             spacer_start="1"
+             spacer_end="2"
+             efi_partition="${device}2"
+             efi_start=${spacer_end}
+             efi_end=$((${efi_start}+${EFI_SIZE}))
+             boot_partition="${device}3"
+             boot_start=${efi_end}
+             boot_end=$((${boot_start} + ${BOOT_SIZE}))
+             swap_start=${boot_end}
+             swap_end=$((${swap_start} + ${SWAP_SIZE}))
+             primary_start=${swap_end}
+             primary_end="100%"
 
     sudo parted -s ${device} mkpart '""' ${spacer_start}MiB ${spacer_end}MiB
     sudo parted -s ${device} mkpart EFI fat32 ${efi_start}MiB ${efi_end}MiB
-    sudo parted -s ${device} mkpart boot ext4 ${boot_start}MiB ${boot_end}MiB
+    sudo parted -s ${device} mkpart boot ${boot_start}MiB ${boot_end}MiB
     sudo parted -s ${device} mkpart swap linux-swap ${swap_start}MiB ${swap_end}MiB
     sudo parted -s ${device} mkpart primary ${primary_start}MiB ${primary_end}
-    parted -s ${device} name 2 "bios${2}"
+    parted -s ${device} name 1 "bios${2}"
     parted -s ${device} name 2 "efi${2}"
     parted -s ${device} name 3 "boot${2}"
     parted -s ${device} name 4 "swap${2}"
@@ -84,7 +87,7 @@ partition_device() {
     fi
 
     mkfs.fat -F32 -v -I ${efi_partition}
-    mkfs.ext4 ${boot_partition}
+    #mkfs.ext4 ${boot_partition}
     swapon ${swap_partition}
     echo "${device} partitioned."
 }
