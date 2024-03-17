@@ -45,10 +45,10 @@ partition_device() {
      primary_start=${swap_end}
      primary_end="100%"
 
-    parted -s ${device} mkpart EFI fat32 ${efi_start}MiB ${efi_end}MiB
-    parted -s ${device} mkpart boot ext4 ${boot_start}MiB ${boot_end}MiB
-    parted -s ${device} mkpart swap linux-swap ${swap_start}MiB ${swap_end}
-    parted -s ${device} mkpart primary ${primary_start}MiB ${primary_end}MiB
+    sudo parted -s ${device} mkpart EFI fat32 ${efi_start}MiB ${efi_end}MiB
+    sudo parted -s ${device} mkpart boot ext4 ${boot_start}MiB ${boot_end}MiB
+    sudo parted -s ${device} mkpart swap linux-swap ${swap_start}MiB ${swap_end}MiB
+    sudo parted -s ${device} mkpart primary ${primary_start}MiB ${primary_end}
     parted -s ${device} name 1 "efi${2}"
     parted -s ${device} name 2 "boot${2}"
     parted -s ${device} name 3 "swap${2}"
