@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "Preparing BTRFS RAIDs"
-sudo mkfs.btrfs -m raid1 -d raid1 /dev/disk/by-label/boot1 /dev/disk/by-label/boot2 -f
+sudo mkfs.btrfs -m raid1 -d raid1 /dev/disk/by-partlabel/boot1 /dev/disk/by-partlabel/boot2 -f
 sudo mkfs.btrfs -m raid1 -d raid1 /dev/mapper/crypt1 /dev/mapper/crypt2 -f
 sudo mount -o subvolid=5,defaults,compress=zstd:1,discard=async /dev/mapper/crypt1 /mnt
 echo "Creating subvols"
@@ -23,8 +23,8 @@ sudo mount -o subvol=@home,compress=zstd /dev/mapper/crypt1 /mnt/home
 sudo mount -o subvol=@varlog,compress=zstd /dev/mapper/crypt1 /mnt/var/log
 sudo mount -o subvol=@snapshots,compress=zstd /dev/mapper/crypt1 /mnt/snapshots
 sudo mount -o subvol=@tmp,compress=zstd /dev/mapper/crypt1 /mnt/tmp
-sudo mount /dev/disk/by-label/boot1 /mnt/boot
-sudo mount /dev/disk/by-label/efi1 /mnt/boot/efi
+sudo mount /dev/disk/by-partlabel/boot1 /mnt/boot
+sudo mount /dev/disk/by-partlabel/efi1 /mnt/boot/efi
 
 echo "Genfstab and debootstrap"
 sudo apt update
