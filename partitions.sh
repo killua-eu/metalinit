@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Default partition sizes in MiB
-EFI_SIZE=${EFI_SIZE:-1024}
-BOOT_SIZE=${BOOT_SIZE:-2048}
-SWAP_SIZE=${SWAP_SIZE:-32768}
-IMPORT_SSH=${IMPORT_SSH:-gh:killua-eu}
+EFI_SIZE="${EFI_SIZE:-1024}"
+BOOT_SIZE="${BOOT_SIZE:-2048}"
+SWAP_SIZE="${SWAP_SIZE:-32768}"
+IMPORT_SSH="${IMPORT_SSH:-gh:killua-eu}"
 
 if [ -z "${CRYPT_PWD}" ]; then
     echo "CRYPT_PWD ENV variable not set!"
@@ -39,11 +39,11 @@ partition_device() {
     echo "Partitioning ${device}..."
 
     # Wipe existing partition table
-    wipefs -a ${device}
+    wipefs -a "${device}"
 
     # Creating new GPT partition table
-    parted -s ${device} mklabel gpt
-    parted -s ${device} align-check opt 1
+    parted -s "${device}" mklabel gpt
+    parted -s "${device}" align-check opt 1
 
     # Partitioning
     # - p1: (bios spacer)
@@ -54,41 +54,43 @@ partition_device() {
              spacer_start="1"
              spacer_end="2"
              efi_partition="${device}2"
-             efi_start=${spacer_end}
-             efi_end=$((${efi_start}+${EFI_SIZE}))
+             efi_start="${spacer_end}"
+             efi_end=$((efi_start + EFI_SIZE))
              boot_partition="${device}3"
-             boot_start=${efi_end}
-             boot_end=$((${boot_start} + ${BOOT_SIZE}))
-             swap_start=${boot_end}
-             swap_end=$((${swap_start} + ${SWAP_SIZE}))
-             primary_start=${swap_end}
+             boot_start="${efi_end}"
+             boot_end=$((boot_start + BOOT_SIZE))
+             swap_start="${boot_end}"
+             swap_end=$((swap_start + SWAP_SIZE))
+             primary_start="${swap_end}"
              primary_end="100%"
 
-    sudo parted -s ${device} mkpart '""' ${spacer_start}MiB ${spacer_end}MiB
-    sudo parted -s ${device} mkpart EFI fat32 ${efi_start}MiB ${efi_end}MiB
-    sudo parted -s ${device} mkpart boot ${boot_start}MiB ${boot_end}MiB
-    sudo parted -s ${device} mkpart swap linux-swap ${swap_start}MiB ${swap_end}MiB
-    sudo parted -s ${device} mkpart primary ${primary_start}MiB ${primary_end}
-    parted -s ${device} name 1 "bios${2}"
-    parted -s ${device} name 2 "efi${2}"
-    parted -s ${device} name 3 "boot${2}"
-    parted -s ${device} name 4 "swap${2}"
-    parted -s ${device} name 5 "prim${2}"
-    parted -s ${device} set 1 bios_grub on
-    parted -s ${device} set 2 esp on
+    sudo parted -s "${device}" mkpart '""' ${spacer_start}MiB ${spacer_end}MiB
+    sudo parted -s "${device}" mkpart EFI fat32 ${efi_start}MiB ${efi_end}MiB
+    sudo parted -s "${device}" mkpart boot ${boot_start}MiB ${boot_end}MiB
+    sudo parted -s "${device}" mkpart swap linux-swap ${swap_start}MiB ${swap_end}MiB
+    sudo parted -s "${device}" mkpart primary ${primary_start}MiB ${primary_end}
+    echo "    >> Setting up partition names"
+    sudo parted -s "${device}" name 1 "bios${2}"
+    sudo parted -s "${device}" name 2 "efi${2}"
+    sudo parted -s "${device}" name 3 "boot${2}"
+    sudo parted -s "${device}" name 4 "swap${2}"
+    sudo parted -s "${device}" name 5 "prim${2}"
+    echo "    >> Setting up partition flags"
+    sudo parted -s "${device}" set 1 bios_grub on
+    sudo parted -s "${device}" set 2 esp on
 
-    CRYPTDEV="/dev/disk/by-label/prim${2}"
+    CRYPTDEV="/dev/disk/by-partlabel/prim${2}"
     if [ -b "${CRYPTDEV}" ]; then
-        cryptsetup luksFormat "${CRYPTDEV}" --label="crypt${2}" --type luks2 --key-slot=0 <<< ${CRYPT_PWD}
+        sudo cryptsetup luksFormat "${CRYPTDEV}" --label="crypt${2}" --type luks2 --key-slot=0 <<< ${CRYPT_PWD}
         # echo -n ${CRYPT_PWD} | cryptsetup --batch-mode luksFormat "/dev/disk/by-partlabel/prim${2}" --label="crypt${2}"
-        cryptsetup open "${CRYPTDEV}" "crypt${2}" --key-slot=0 <<< ${CRYPTPASS}
+        sudo cryptsetup open "${CRYPTDEV}" "crypt${2}" --key-slot=0 <<< ${CRYPTPASS}
     else
         echo "No partition found with label: prim${2}"
     fi
 
-    mkfs.fat -F32 -v -I ${efi_partition}
+    mkfs.fat -F32 -v -I "/dev/disk/by-partlabel/efi${2}"
     #mkfs.ext4 ${boot_partition}
-    swapon ${swap_partition}
+    swapon "/dev/disk/by-partlabel/swap${2}"
     echo "${device} partitioned."
 }
 
