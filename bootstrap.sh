@@ -20,16 +20,16 @@ sudo umount /mnt
 
 echo "Remounting for chroot"
 sudo mount -o subvol=@,compress=zstd /dev/mapper/crypt1 /mnt
-
 sudo mkdir /mnt/{boot,home,var,snapshots,tmp}
 sudo mkdir /mnt/var/log
-sudo mkdir /mnt/boot/efi
-
 sudo mount -o subvol=@home,compress=zstd /dev/mapper/crypt1 /mnt/home
 sudo mount -o subvol=@varlog,compress=zstd /dev/mapper/crypt1 /mnt/var/log
 sudo mount -o subvol=@snapshots,compress=zstd /dev/mapper/crypt1 /mnt/snapshots
 sudo mount -o subvol=@tmp,compress=zstd /dev/mapper/crypt1 /mnt/tmp
+
 sudo mount /dev/disk/by-partlabel/boot1 /mnt/boot
+
+sudo mkdir /mnt/boot/efi
 sudo mount /dev/disk/by-partlabel/efi1 /mnt/boot/efi
 
 echo "Genfstab and debootstrap"
