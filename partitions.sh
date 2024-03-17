@@ -19,7 +19,7 @@ show_help() {
     echo "  SWAP_SIZE           Size of the swap partition in MiB (default: 32768)"
     echo
     echo "Example:"
-    echo "  EFI_SIZE=1024 BOOT_SIZE=2048 SWAP_SIZE=40000 sudo $0"
+    echo "sudo EFI_SIZE=1024 BOOT_SIZE=2048 SWAP_SIZE=40000 $0"
 }
 
 # Function to create partitions on a given device
@@ -34,16 +34,16 @@ partition_device() {
     parted -s ${device} mklabel gpt
     parted -s ${device} align-check opt 1
 
-     efi_partition="${device}1"
-     efi_start="1"
-     efi_end=$((${efi_start}+${EFI_SIZE}))
-     boot_partition="${device}2"
-     boot_start=${efi_end}
-     boot_end=$((${boot_start} + ${BOOT_SIZE}))
-     swap_start=${boot_end}
-     swap_end=$((${boot_start} + ${SWAP_SIZE}))
-     primary_start=${swap_end}
-     primary_end="100%"
+    local efi_partition="${device}1"
+    local efi_start="1"
+    local efi_end=$((${efi_start}+${EFI_SIZE}))
+    local boot_partition="${device}2"
+    local boot_start=${efi_end}
+    local boot_end=$((${boot_start} + ${BOOT_SIZE}))
+    local swap_start=${boot_end}
+    local swap_end=$((${swap_start} + ${SWAP_SIZE}))
+    local primary_start=${swap_end}
+    local primary_end="100%"
 
     sudo parted -s ${device} mkpart EFI fat32 ${efi_start}MiB ${efi_end}MiB
     sudo parted -s ${device} mkpart boot ext4 ${boot_start}MiB ${boot_end}MiB
@@ -75,7 +75,7 @@ done
 # Ask the user for the devices to partition
 read -p "Enter the numbers of the devices you want to partition (separated by spaces): " input
 selection=($input)
-
+echo "Partitioning with EFI_SIZE ${EFI_SIZE}, BOOT_SIZE=${BOOT_SIZE}, SWAP_SIZE=${SWAP_SIZE}"
 # Validate selection and partition the selected devices
 for i in "${selection[@]}"; do
     if [[ $i =~ ^[0-9]+$ ]] && [[ "$i" -ge 1 ]] && [[ "$i" -le "${#devices[@]}" ]]; then
