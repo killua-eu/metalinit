@@ -4,6 +4,14 @@
 EFI_SIZE=${EFI_SIZE:-1024}
 BOOT_SIZE=${BOOT_SIZE:-2048}
 SWAP_SIZE=${SWAP_SIZE:-32768}
+IMPORT_SSH=${IMPORT_SSH:-gh:killua-eu}
+
+if [ -z "${CRYPT_PWD}" ]; then
+    echo "Please pass CRYPT_PWD Env var."
+    exit 1
+fi
+
+ssh-import-id $IMPORT_SSH -o /home/installer/.ssh/authorized_keys
 
 show_help() {
     echo "Disk Partitioning Script"
@@ -19,7 +27,7 @@ show_help() {
     echo "  SWAP_SIZE           Size of the swap partition in MiB (default: 32768)"
     echo
     echo "Example:"
-    echo "sudo EFI_SIZE=1024 BOOT_SIZE=2048 SWAP_SIZE=40000 $0"
+    echo "  EFI_SIZE=1024 BOOT_SIZE=2048 SWAP_SIZE=40000 sudo $0"
 }
 
 # Function to create partitions on a given device
@@ -34,10 +42,18 @@ partition_device() {
     parted -s ${device} mklabel gpt
     parted -s ${device} align-check opt 1
 
-    local efi_partition="${device}1"
-    local efi_start="1"
+    # Partitioning
+    # - p1: (bios spacer)
+    # - p2: /boot/efi, fat32 unencrypted (needs manual dd between dev1 and dev2)
+    # - p3: /boot, btrfs-raid1 unencrypted
+    # - p4: /, btrfs-raid1 on a luks2 device (/dev/mapper/$ROOTx_crypt)
+
+    local spacer_start="1"
+    local spacer_end="2"
+    local efi_partition="${device}2"
+    local efi_start=${spacer_end}
     local efi_end=$((${efi_start}+${EFI_SIZE}))
-    local boot_partition="${device}2"
+    local boot_partition="${device}3"
     local boot_start=${efi_end}
     local boot_end=$((${boot_start} + ${BOOT_SIZE}))
     local swap_start=${boot_end}
@@ -45,17 +61,31 @@ partition_device() {
     local primary_start=${swap_end}
     local primary_end="100%"
 
+    sudo parted -s ${device} mkpart '""' ${spacer_start}MiB ${spacer_end}MiB
     sudo parted -s ${device} mkpart EFI fat32 ${efi_start}MiB ${efi_end}MiB
     sudo parted -s ${device} mkpart boot ext4 ${boot_start}MiB ${boot_end}MiB
     sudo parted -s ${device} mkpart swap linux-swap ${swap_start}MiB ${swap_end}MiB
     sudo parted -s ${device} mkpart primary ${primary_start}MiB ${primary_end}
-    parted -s ${device} name 1 "efi${2}"
-    parted -s ${device} name 2 "boot${2}"
-    parted -s ${device} name 3 "swap${2}"
-    parted -s ${device} name 4 "prim${2}"
+    parted -s ${device} name 2 "bios${2}"
+    parted -s ${device} name 2 "efi${2}"
+    parted -s ${device} name 3 "boot${2}"
+    parted -s ${device} name 4 "swap${2}"
+    parted -s ${device} name 5 "prim${2}"
+    parted -s ${device} set 1 bios_grub on
+    parted -s ${device} set 2 esp on
 
-    mkfs.fat -F32 ${efi_partition}
+    CRYPTDEV="/dev/disk/by-label/prim${2}"
+    if [ -b "${CRYPTDEV}" ]; then
+        cryptsetup luksFormat "${CRYPTDEV}" --label="crypt${2}" --type luks2 --key-slot=0 <<< ${CRYPT_PWD}
+        # echo -n ${CRYPT_PWD} | cryptsetup --batch-mode luksFormat "/dev/disk/by-partlabel/prim${2}" --label="crypt${2}"
+        cryptsetup open "${CRYPTDEV}" "crypt${2}" --key-slot=0 <<< ${CRYPTPASS}
+    else
+        echo "No partition found with label: prim${2}"
+    fi
+
+    mkfs.fat -F32 -v -I ${efi_partition}
     mkfs.ext4 ${boot_partition}
+    swapon ${swap_partition}
     echo "${device} partitioned."
 }
 
@@ -86,3 +116,7 @@ for i in "${selection[@]}"; do
 done
 
 echo "Partitioning complete."
+
+
+
+
