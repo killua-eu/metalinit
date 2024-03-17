@@ -66,10 +66,15 @@ partition_device() {
              primary_start="${swap_end}"
              primary_end="100%"
 
+    echo "    >> p1"
     sudo parted -s "${device}" mkpart '""' ${spacer_start}MiB ${spacer_end}MiB
+    echo "    >> p2"
     sudo parted -s "${device}" mkpart EFI fat32 ${efi_start}MiB ${efi_end}MiB
+    echo "    >> p3"
     sudo parted -s "${device}" mkpart boot ${boot_start}MiB ${boot_end}MiB
+    echo "    >> p4"
     sudo parted -s "${device}" mkpart swap linux-swap ${swap_start}MiB ${swap_end}MiB
+    echo "    >> p5"
     sudo parted -s "${device}" mkpart primary ${primary_start}MiB ${primary_end}
     echo "    >> Setting up partition names"
     sudo parted -s "${device}" name 1 "bios${2}"
