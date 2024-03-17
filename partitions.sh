@@ -32,26 +32,27 @@ partition_device() {
 
     # Creating new GPT partition table
     parted -s ${device} mklabel gpt
+    parted -s ${device} align-check opt 1
 
-    local efi_partition="${device}1"
-    local efi_start="1"
-    local efi_end=$((${efi_start}+${EFI_SIZE}))
-    local boot_partition="${device}2"
-    local boot_start="${efi_end}"
-    local boot_end=$((${boot_start} + ${BOOT_SIZE}))
-    local primary_start="${boot_end}"
-    local primary_end="100%-${BOOT_SIZE}"
-    local swap_start="${primary_end}"
-    local swap_end="100%"
+     efi_partition="${device}1"
+     efi_start="1"
+     efi_end=$((${efi_start}+${EFI_SIZE}))
+     boot_partition="${device}2"
+     boot_start=${efi_end}
+     boot_end=$((${boot_start} + ${BOOT_SIZE}))
+     swap_start=${boot_end}
+     swap_end=$((${boot_start} + ${SWAP_SIZE}))
+     primary_start=${swap_end}
+     primary_end="100%"
 
     parted -s ${device} mkpart EFI fat32 ${efi_start}MiB ${efi_end}MiB
-    parted -s ${device} name 1 "efi${2}"
     parted -s ${device} mkpart boot ext4 ${boot_start}MiB ${boot_end}MiB
-    parted -s ${device} name 2 "boot${2}"
-    parted -s ${device} mkpart primary ${primary_start}MiB ${primary_end}MiB
-    parted -s ${device} name 3 "prim${2}"
     parted -s ${device} mkpart swap linux-swap ${swap_start}MiB ${swap_end}
-    parted -s ${device} name 4 "swap${2}"
+    parted -s ${device} mkpart primary ${primary_start}MiB ${primary_end}MiB
+    parted -s ${device} name 1 "efi${2}"
+    parted -s ${device} name 2 "boot${2}"
+    parted -s ${device} name 3 "swap${2}"
+    parted -s ${device} name 4 "prim${2}"
 
     mkfs.fat -F32 ${efi_partition}
     mkfs.ext4 ${boot_partition}
