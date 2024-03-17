@@ -26,7 +26,8 @@ show_help() {
 }
 
 if [ -z "${CRYPT_PWD}" ]; then
-    echo "CRYPT_PWD ENV variable not set!"
+    echo "[ERROR] CRYPT_PWD ENV variable not set!"
+    echo ""
     show_help
     exit 1
 fi
@@ -79,12 +80,14 @@ partition_device() {
     echo "    >> Setting up partition flags"
     sudo parted -s "${device}" set 1 bios_grub on
     sudo parted -s "${device}" set 2 esp on
+    sleep 1
 
     CRYPTDEV="/dev/disk/by-partlabel/prim${2}"
+    echo "    >> Running cryptsetup on ${CRYPTDEV}"
     if [ -b "${CRYPTDEV}" ]; then
         sudo cryptsetup luksFormat "${CRYPTDEV}" --label="crypt${2}" --type luks2 --key-slot=0 <<< ${CRYPT_PWD}
         # echo -n ${CRYPT_PWD} | cryptsetup --batch-mode luksFormat "/dev/disk/by-partlabel/prim${2}" --label="crypt${2}"
-        sudo cryptsetup open "${CRYPTDEV}" "crypt${2}" --key-slot=0 <<< ${CRYPTPASS}
+        sudo cryptsetup open "${CRYPTDEV}" "crypt${2}" --key-slot=0 <<< "${CRYPTPASS}"
     else
         echo "No partition found with label: prim${2}"
     fi
