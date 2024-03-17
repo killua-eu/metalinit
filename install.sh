@@ -6,11 +6,13 @@ apt install -y ubuntu-server
 add-apt-repository -y universe
 
 apt update -y
-apt install -y linux-{,image-,headers-}generic linux-firmware
-#linux-generic-hwe-22.04 linux-headers-generic-hwe-22.04 initramfs-tools cryptsetup
-#cryptsetup-initramfs dropbear-initramfs efibootmgr keyutils btrfs-progs grub-efi-amd64-signed grub-pc zstd curl wget command-not-found parted ubuntu-server mc
-apt install -y grub2-common grub-efi-amd64 dropbear-initramfs cryptsetup cryptsetup-initramfs efibootmgr keyutils btrfs-progs zstd curl wget parted command-not-found ssh-import-id
-apt install -y mc
+apt install -y linux-{,image-,headers-}generic linux-firmware \
+               grub2-common grub-efi-amd64 efibootmgr \
+               cryptsetup btrfs-progs zstd \
+               dropbear-initramfs cryptsetup-initramfs \
+               openssh-server \
+               keyutils curl wget parted command-not-found ssh-import-id \
+               mc
 ssh-import-id gh:killua-eu
 ssh-import-id gh:killua-eu -o /etc/dropbear/initramfs/authorized_keys
 cd /etc/dropbear/initramfs
@@ -39,10 +41,13 @@ update-grub
 
 
 FIRSTUSER="killua"
+FIRSTPASS="killua"
 SETHOSTNAME="myhost"
 IMPORTSSH="gh:killua-eu"
 echo "${SETHOSTNAME}" > /etc/hostname
 sudo useradd ${FIRSTUSER} -mG users,sudo,adm,plugdev,lxd -s /bin/bash
+echo "${FIRSTUSER}:${FIRSTPASS}" | sudo chpasswd
+
 ssh-import-id $IMPORTSSH -o /home/${FIRSTUSER}/.ssh/authorized_keys
 
 # After first boot

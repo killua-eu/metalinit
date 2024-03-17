@@ -88,7 +88,6 @@ partition_device() {
     echo "    >> Running cryptsetup on ${CRYPTDEV}"
     if [ -b "${CRYPTDEV}" ]; then
         sudo cryptsetup luksFormat "${CRYPTDEV}" --label="crypt${2}" --type luks2 --key-slot=0 <<< ${CRYPT_PWD}
-        # echo -n ${CRYPT_PWD} | cryptsetup --batch-mode luksFormat "/dev/disk/by-partlabel/prim${2}" --label="crypt${2}"
         sleep 1
         sudo cryptsetup open "${CRYPTDEV}" "crypt${2}" --type luks2 --key-slot=0 <<< "${CRYPT_PWD}"
     else
@@ -96,7 +95,6 @@ partition_device() {
     fi
 
     mkfs.fat -F32 -v -I "/dev/disk/by-partlabel/efi${2}"
-    #mkfs.ext4 ${boot_partition}
     mkswap "/dev/disk/by-partlabel/swap${2}"
     swapon "/dev/disk/by-partlabel/swap${2}"
     echo "${device} partitioned."
