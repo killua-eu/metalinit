@@ -6,14 +6,6 @@ BOOT_SIZE="${BOOT_SIZE:-2048}"
 SWAP_SIZE="${SWAP_SIZE:-32768}"
 IMPORT_SSH="${IMPORT_SSH:-gh:killua-eu}"
 
-if [ -z "${CRYPT_PWD}" ]; then
-    echo "CRYPT_PWD ENV variable not set!"
-    show_help
-    exit 1
-fi
-
-ssh-import-id $IMPORT_SSH -o /home/installer/.ssh/authorized_keys
-
 show_help() {
     echo "Disk Partitioning Script"
     echo
@@ -32,6 +24,15 @@ show_help() {
     echo "Example:"
     echo "  EFI_SIZE=1024 BOOT_SIZE=2048 SWAP_SIZE=40000 CRYPT_PWD='secret' sudo $0"
 }
+
+if [ -z "${CRYPT_PWD}" ]; then
+    echo "CRYPT_PWD ENV variable not set!"
+    show_help
+    exit 1
+fi
+
+ssh-import-id "${IMPORT_SSH}" -o /home/installer/.ssh/authorized_keys
+
 
 # Function to create partitions on a given device
 partition_device() {
