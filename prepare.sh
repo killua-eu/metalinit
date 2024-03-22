@@ -166,7 +166,7 @@ fi
 
 # Present a menu for the user to select which devices to partition
 echo "Detected storage devices:"
-devices=($(lsblk -dn -o name -I 8,9,179,253,259 | grep -v 'loop\|^[sr]'))
+devices=($(lsblk -o NAME,TRAN,RM,TYPE | grep disk | grep -v "1 disk" | awk '{print $1}'))
 for i in "${!devices[@]}"; do
     echo "$((i+1))) /dev/${devices[i]}"
 done
@@ -176,7 +176,7 @@ read -p "Enter the numbers of the devices you want to partition (separated by sp
 selection=($input)
 echo "Partitioning with EFI_SIZE ${EFI_SIZE}, BOOT_SIZE=${BOOT_SIZE}, SWAP_SIZE=${SWAP_SIZE}"
 # Validate selection and partition the selected devices
-echo "" > ./devices.tmp;
+truncate -s 0 ./devices.tmp;
 for i in "${selection[@]}"; do
     if [[ $i =~ ^[0-9]+$ ]] && [[ "$i" -ge 1 ]] && [[ "$i" -le "${#devices[@]}" ]]; then
         partition_device "/dev/${devices[$((i-1))]}" "${i}"
