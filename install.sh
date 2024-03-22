@@ -28,8 +28,8 @@ apt install -y linux-{,image-,headers-}generic linux-firmware \
                mc
 
 ssh-import-id "${GETSSHID}"
-ssh-import-id "${GETSSHID}" | sudo tee /etc/dropbear-initramfs/authorized_keys > /dev/null
-sudo chmod 600 /etc/dropbear-initramfs/authorized_keys
+ssh-import-id "${GETSSHID}" -o /etc/dropbear/initramfs/authorized_keys
+sudo chmod 600 /etc/dropbear/initramfs/authorized_keys
 
 cd /etc/dropbear/initramfs
 
