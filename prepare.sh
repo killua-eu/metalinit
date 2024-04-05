@@ -20,6 +20,7 @@ show_help() {
     echo "  SWAP_SIZE           Size of the swap partition in MiB (default: 32768)"
     echo "  CRYPT_PWD           MANDATORY luks2 crypt password."
     echo "  IMPORT_SSH          Import ssh keys (example: gh:GithubUser)."
+    echo "*) SWAP partition won't be created if SWAP_SIZE is set to 0"
     echo
     echo "Example:"
     echo "  EFI_SIZE=1024 BOOT_SIZE=2048 SWAP_SIZE=40000 CRYPT_PWD='secret' sudo $0"
@@ -70,14 +71,14 @@ partition_device() {
     sudo parted -s "${device}" mkpart '""' ${spacer_start}MiB ${spacer_end}MiB
     sudo parted -s "${device}" mkpart EFI fat32 ${efi_start}MiB ${efi_end}MiB
     sudo parted -s "${device}" mkpart boot ${boot_start}MiB ${boot_end}MiB
-    sudo parted -s "${device}" mkpart swap linux-swap ${swap_start}MiB ${swap_end}MiB
+    if [ "${SWAP_SIZE}" -gt 0 ]; then sudo parted -s "${device}" mkpart swap linux-swap ${swap_start}MiB ${swap_end}MiB; fi
     sudo parted -s "${device}" mkpart primary ${primary_start}MiB ${primary_end}
 
     echo "    >> Setting up partition names"
     sudo parted -s "${device}" name 1 "bios${2}"
     sudo parted -s "${device}" name 2 "efi${2}"
     sudo parted -s "${device}" name 3 "boot${2}"
-    sudo parted -s "${device}" name 4 "swap${2}"
+    if [ "${SWAP_SIZE}" -gt 0 ]; then sudo parted -s "${device}" name 4 "swap${2}"; fi
     sudo parted -s "${device}" name 5 "prim${2}"
     echo "    >> Setting up partition flags"
     sudo parted -s "${device}" set 1 bios_grub on
@@ -95,8 +96,10 @@ partition_device() {
     fi
 
     mkfs.fat -F32 -v -I "/dev/disk/by-partlabel/efi${2}"
-    mkswap "/dev/disk/by-partlabel/swap${2}"
-    swapon "/dev/disk/by-partlabel/swap${2}"
+    if [ "${SWAP_SIZE}" -gt 0 ]; then
+        mkswap "/dev/disk/by-partlabel/swap${2}"
+        swapon "/dev/disk/by-partlabel/swap${2}"
+    fi
     echo "${device} partitioned."
 }
 
