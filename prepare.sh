@@ -72,15 +72,26 @@ partition_device() {
     sudo parted -s "${device}" mkpart primary ${primary_start}MiB ${primary_end}
 
     echo "    >> Setting up partition names"
-    sudo parted -s "${device}" name 1 "bios${2}"
-    sudo parted -s "${device}" name 2 "efi${2}"
-    sudo parted -s "${device}" name 3 "boot${2}"
-    if [ "${SWAP_SIZE}" -gt 0 ]; then sudo parted -s "${device}" name 4 "swap${2}"; fi
-    sudo parted -s "${device}" name 5 "prim${2}"
-    echo "    >> Setting up partition flags"
-    sudo parted -s "${device}" set 1 bios_grub on
-    sudo parted -s "${device}" set 2 esp on
-    sleep 1
+    counter=0
+    # BIOS
+    let counter+=1;
+    sudo parted -s "${device}" name $counter "bios${2}"
+    sudo parted -s "${device}" set $counter bios_grub on
+    # EFI
+    let counter+=1;
+    sudo parted -s "${device}" name $counter "efi${2}"
+    sudo parted -s "${device}" set $counter esp on
+    # BOOT
+    let counter+=1;
+    sudo parted -s "${device}" name $counter "boot${2}"
+    # SWAP (if not zero)
+    if [ "${SWAP_SIZE}" -gt 0 ]; then
+        let counter+=1;
+        sudo parted -s "${device}" name $counter "swap${2}"
+    fi
+    # PRIMARY
+    let counter+=1;
+    sudo parted -s "${device}" name $counter "prim${2}"
 
     CRYPTDEV="/dev/disk/by-partlabel/prim${2}"
     echo "    >> Running cryptsetup on ${CRYPTDEV}"
