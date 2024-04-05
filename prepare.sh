@@ -33,9 +33,6 @@ if [ -z "${CRYPT_PWD}" ]; then
     exit 1
 fi
 
-ssh-import-id "${IMPORT_SSH}" -o /home/installer/.ssh/authorized_keys
-
-
 # Function to create partitions on a given device
 partition_device() {
      local device=$1
@@ -166,6 +163,10 @@ if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
     show_help
     exit 0
 fi
+
+# Ensure ssh-import-id is installed and performed
+sudo apt install ssh-import-id
+ssh-import-id "${IMPORT_SSH}" -o /home/installer/.ssh/authorized_keys
 
 # Present a menu for the user to select which devices to partition
 echo "Detected storage devices:"
