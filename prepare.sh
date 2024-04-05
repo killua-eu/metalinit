@@ -93,6 +93,9 @@ partition_device() {
     let counter+=1;
     sudo parted -s "${device}" name $counter "prim${2}"
 
+    # wait before setting up cryptsetup
+    sleep 2
+
     CRYPTDEV="/dev/disk/by-partlabel/prim${2}"
     echo "    >> Running cryptsetup on ${CRYPTDEV}"
     if [ -b "${CRYPTDEV}" ]; then
