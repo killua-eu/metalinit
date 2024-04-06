@@ -13,6 +13,7 @@ fi
 : "${HOSTNAME:=$(read -p "Enter the hostname: " REPLY; echo $REPLY)}"
 : "${GETSSHID:=$(read -p "Enter the ssh-import-id (i.e. gh:username for github): " REPLY; echo $REPLY)}"
 
+apt --fix-broken install
 apt update -y
 apt upgrade -y
 apt install -y ubuntu-server software-properties-common
@@ -25,7 +26,7 @@ apt install -y linux-{,image-,headers-}generic linux-firmware \
                dropbear-initramfs cryptsetup-initramfs \
                openssh-server \
                keyutils curl wget parted command-not-found ssh-import-id \
-               mc
+               mc nano jq pastebinit
 
 ssh-import-id "${GETSSHID}"
 ssh-import-id "${GETSSHID}" -o /etc/dropbear/initramfs/authorized_keys

@@ -158,8 +158,8 @@ prepare_pkgs() {
   echo "Genfstab and debootstrap"
   sudo apt update
   sudo apt install -y arch-install-scripts debootstrap
-  # libnpth0t64,libnpth0,libnpth0-dev
-  sudo debootstrap --include=libnpth0t64,libnpth0-dev,software-properties-common --components=main,restricted,universe --log-extra-deps --variant=minbase --arch=amd64 noble /mnt http://archive.ubuntu.com/ubuntu/
+  # libnpth0t64,libnpth0,libaio1t64,libaio1
+  sudo debootstrap --include=libnpth0t64,libaio1t64,software-properties-common --components=main,restricted,universe --log-extra-deps --variant=minbase --arch=amd64 noble /mnt http://archive.ubuntu.com/ubuntu/
   sudo genfstab -U /mnt | sudo tee -a /mnt/etc/fstab > /dev/null
 }
 
@@ -180,7 +180,7 @@ if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
 fi
 
 # Ensure ssh-import-id is installed and performed
-sudo apt install ssh-import-id
+sudo apt install ssh-import-id -y
 ssh-import-id "${IMPORT_SSH}" -o /home/installer/.ssh/authorized_keys
 
 # Present a menu for the user to select which devices to partition
