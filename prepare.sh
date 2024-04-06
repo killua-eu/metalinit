@@ -158,7 +158,7 @@ prepare_pkgs() {
   echo "Genfstab and debootstrap"
   sudo apt update
   sudo apt install -y arch-install-scripts debootstrap
-  sudo debootstrap --arch amd64 noble /mnt http://archive.ubuntu.com/ubuntu/
+  sudo debootstrap --arch=$(dpkg --print-architecture) noble --log-extra-deps --variant=minbase --components=main,restricted,universe /mnt http://archive.ubuntu.com/ubuntu/
   sudo genfstab -U /mnt | sudo tee -a /mnt/etc/fstab > /dev/null
 }
 
