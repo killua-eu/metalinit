@@ -23,7 +23,7 @@ show_help() {
     echo "*) SWAP partition won't be created if SWAP_SIZE is set to 0"
     echo
     echo "Example:"
-    echo "  EFI_SIZE=1024 BOOT_SIZE=2048 SWAP_SIZE=40000 CRYPT_PWD='secret' sudo $0"
+    echo "  sudo SWAP_SIZE=0 IMPORT_SSH='gh:username' CRYPT_PWD='secret' $0"
 }
 
 if [ -z "${CRYPT_PWD}" ]; then
@@ -158,7 +158,8 @@ prepare_pkgs() {
   echo "Genfstab and debootstrap"
   sudo apt update
   sudo apt install -y arch-install-scripts debootstrap
-  sudo debootstrap --arch=$(dpkg --print-architecture) noble --log-extra-deps --variant=minbase --components=main,restricted,universe /mnt http://archive.ubuntu.com/ubuntu/
+  # libnpth0t64,libnpth0,libnpth0-dev
+  sudo debootstrap --include=libnpth0t64,libnpth0-dev --components=main,restricted,universe --log-extra-deps --variant=minbase --arch=amd64 noble /mnt http://archive.ubuntu.com/ubuntu/
   sudo genfstab -U /mnt | sudo tee -a /mnt/etc/fstab > /dev/null
 }
 
