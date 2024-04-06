@@ -15,7 +15,7 @@ fi
 
 apt update -y
 apt upgrade -y
-apt install -y ubuntu-server
+apt install -y ubuntu-server software-properties-common
 add-apt-repository -y universe
 
 apt update -y
