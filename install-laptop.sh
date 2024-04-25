@@ -21,7 +21,6 @@ add-apt-repository -y universe
 
 echo "# <target name>	<source device>		<key file>	<options>" > /etc/crypttab
 echo "crypt1 UUID=$(blkid -s UUID -o value /dev/disk/by-partlabel/prim1 | tr -d '\n') none luks,discard" >> /etc/crypttab
-echo "crypt2 UUID=$(blkid -s UUID -o value /dev/disk/by-partlabel/prim2 | tr -d '\n') none luks,discard" >> /etc/crypttab
 
 apt update -y
 apt install -y linux-{,image-,headers-}generic linux-firmware \

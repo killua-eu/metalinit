@@ -19,11 +19,10 @@ show_help() {
     echo "  BOOT_SIZE           Size of the /boot partition in MiB (default: 2048)"
     echo "  SWAP_SIZE           Size of the swap partition in MiB (default: 32768)"
     echo "  CRYPT_PWD           MANDATORY luks2 crypt password."
-    echo "  IMPORT_SSH          Import ssh keys (example: gh:GithubUser)."
     echo "*) SWAP partition won't be created if SWAP_SIZE is set to 0"
     echo
     echo "Example:"
-    echo "  sudo SWAP_SIZE=0 IMPORT_SSH='gh:username' CRYPT_PWD='secret' $0"
+    echo "  sudo SWAP_SIZE=0 CRYPT_PWD='secret' $0"
 }
 
 if [ -z "${CRYPT_PWD}" ]; then
@@ -155,8 +154,7 @@ prepare_pkgs() {
   echo "Genfstab and debootstrap"
   sudo apt update
   sudo apt install -y arch-install-scripts debootstrap
-  # libnpth0t64,libnpth0,libaio1t64,libaio1
-  sudo debootstrap --include=libnpth0t64,libaio1t64,software-properties-common --components=main,restricted,universe --log-extra-deps --variant=minbase --arch=amd64 noble /mnt http://archive.ubuntu.com/ubuntu/
+  sudo debootstrap --include=software-properties-common --components=main,restricted,universe --log-extra-deps --variant=minbase --arch=amd64 noble /mnt http://archive.ubuntu.com/ubuntu/
   sudo genfstab -U /mnt | sudo tee -a /mnt/etc/fstab > /dev/null
 }
 
@@ -175,10 +173,6 @@ if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
     show_help
     exit 0
 fi
-
-# Ensure ssh-import-id is installed and performed
-sudo apt install ssh-import-id -y
-ssh-import-id "${IMPORT_SSH}" -o /home/installer/.ssh/authorized_keys
 
 # Present a menu for the user to select which devices to partition
 echo "Detected storage devices:"
@@ -206,5 +200,5 @@ echo "Partitioning complete."
 
 prepare_fs;
 remount_fs;
-#prepare_pkgs;
-#do_chroot;
+prepare_pkgs;
+do_chroot;
