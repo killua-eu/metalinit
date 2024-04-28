@@ -91,6 +91,8 @@ partition_device() {
     # PRIMARY
     let counter+=1;
     sudo parted -s "${device}" name $counter "prim${2}"
+    sudo parted -s "${device}" set $counter lvm on
+
 
     # wait before setting up cryptsetup
     sleep 2
@@ -240,7 +242,8 @@ main_menu() {
     echo "5) Enter chroot environment"
     echo "-----------------------"
     echo "6) Show help"
-    echo "7) Exit"
+    echo "7) Crypt open"
+    echo "8) Exit"
     read -p "Enter your choice: " choice
 
     case "$choice" in
