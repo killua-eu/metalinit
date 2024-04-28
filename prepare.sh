@@ -3,7 +3,7 @@
 # Default partition sizes in MiB
 EFI_SIZE="${EFI_SIZE:-1024}"
 BOOT_SIZE="${BOOT_SIZE:-2048}"
-SWAP_SIZE="${SWAP_SIZE:-32768}"
+SWAP_SIZE="${SWAP_SIZE:-0}"
 IMPORT_SSH="${IMPORT_SSH:-gh:killua-eu}"
 
 show_help() {
@@ -17,7 +17,7 @@ show_help() {
     echo "Environment variables:"
     echo "  EFI_SIZE            Size of the EFI partition in MiB (default: 1024)"
     echo "  BOOT_SIZE           Size of the /boot partition in MiB (default: 2048)"
-    echo "  SWAP_SIZE           Size of the swap partition in MiB (default: 32768)"
+    echo "  SWAP_SIZE           Size of the swap partition in MiB (default: 0)"
     echo "  CRYPT_PWD           MANDATORY luks2 crypt password."
     echo "*) SWAP partition won't be created if SWAP_SIZE is set to 0"
     echo
@@ -133,24 +133,37 @@ prepare_fs() {
   sudo umount /mnt
 }
 
-
 remount_fs() {
+  echo "Enter the mount point (default /, for chrooting use i.e. /mnt):"
+  read -p "Mount point: " mount_point
+  mount_point="${mount_point:-/}"  # Use /mnt as default if no input provided
+
+  if [ ! -d "$mount_point" ]; then
+    echo "Directory does not exist. Creating $mount_point."
+    sudo mkdir -p "$mount_point"
+    if [ $? -ne 0 ]; then  # Check if mkdir was successful
+      echo "Failed to create directory $mount_point. Please check your permissions."
+      exit 1
+    fi
+  fi
+
   echo "Checking for devices"
-  if [ ! -b "/dev/mapper/crypt1" ]; then sudo cryptsetup open /dev/disk/by-partlabel/prim1 crypt1 --type luks2 --key-slot=0 <<< "${CRYPT_PWD}"; fi;
-  if [ ! -b "/dev/mapper/crypt2" ]; then sudo cryptsetup open /dev/disk/by-partlabel/prim2 crypt2 --type luks2 --key-slot=0 <<< "${CRYPT_PWD}"; fi;
-  if [ ! -b "/dev/mapper/crypt1" ]; then echo "[FAIL] Cannot find /dev/mapper/crypt1" ; exit 1; fi;
-  if [ ! -b "/dev/mapper/crypt2" ]; then echo "[FAIL] Cannot find /dev/mapper/crypt2" ; exit 1; fi;
-  echo "Remounting for chroot"
-  sudo mount -o subvol=@,compress=zstd /dev/mapper/crypt1 /mnt
-  sudo mkdir -p /mnt/{boot,home,var,snapshots,tmp}
-  sudo mkdir -p /mnt/var/log
-  sudo mount -o subvol=@home,compress=zstd /dev/mapper/crypt1 /mnt/home
-  sudo mount -o subvol=@varlog,compress=zstd /dev/mapper/crypt1 /mnt/var/log
-  sudo mount -o subvol=@snapshots,compress=zstd /dev/mapper/crypt1 /mnt/snapshots
-  sudo mount -o subvol=@tmp,compress=zstd /dev/mapper/crypt1 /mnt/tmp
-  sudo mount /dev/disk/by-partlabel/boot1 /mnt/boot
-  sudo mkdir -p /mnt/boot/efi
-  sudo mount /dev/disk/by-partlabel/efi1 /mnt/boot/efi
+  if [ ! -b "/dev/mapper/crypt1" ]; then sudo cryptsetup open /dev/disk/by-partlabel/prim1 crypt1 --type luks2 --key-slot=0 <<< "${CRYPT_PWD}"; fi
+  if [ ! -b "/dev/mapper/crypt2" ]; then sudo cryptsetup open /dev/disk/by-partlabel/prim2 crypt2 --type luks2 --key-slot=0 <<< "${CRYPT_PWD}"; fi
+  if [ ! -b "/dev/mapper/crypt1" ]; then echo "[FAIL] Cannot find /dev/mapper/crypt1" ; exit 1; fi
+  if [ ! -b "/dev/mapper/crypt2" ]; then echo "[FAIL] Cannot find /dev/mapper/crypt2" ; exit 1; fi
+
+  echo "Remounting for chroot at $mount_point"
+  sudo mount -o subvol=@,compress=zstd /dev/mapper/crypt1 "$mount_point"
+  sudo mkdir -p "$mount_point"/{boot,home,var,snapshots,tmp}
+  sudo mkdir -p "$mount_point"/var/log
+  sudo mount -o subvol=@home,compress=zstd /dev/mapper/crypt1 "$mount_point"/home
+  sudo mount -o subvol=@varlog,compress=zstd /dev/mapper/crypt1 "$mount_point"/var/log
+  sudo mount -o subvol=@snapshots,compress=zstd /dev/mapper/crypt1 "$mount_point"/snapshots
+  sudo mount -o subvol=@tmp,compress=zstd /dev/mapper/crypt1 "$mount_point"/tmp
+  sudo mount /dev/disk/by-partlabel/boot1 "$mount_point"/boot
+  sudo mkdir -p "$mount_point"/boot/efi
+  sudo mount /dev/disk/by-partlabel/efi1 "$mount_point"/boot/efi
 }
 
 prepare_pkgs() {
@@ -171,6 +184,30 @@ do_chroot() {
 }
 
 
+select_devices() {
+    echo "Detected storage devices:"
+    devices=($(lsblk -o NAME,TRAN,RM,TYPE | grep disk | grep -v "1 disk" | awk '{print $1}'))
+    for i in "${!devices[@]}"; do
+        echo "$((i+1))) /dev/${devices[i]}"
+    done
+
+    # Ask the user for the devices to partition
+    read -p "Enter the numbers of the devices you want to partition (separated by spaces): " input
+    selection=($input)
+    echo "Partitioning with EFI_SIZE ${EFI_SIZE}, BOOT_SIZE=${BOOT_SIZE}, SWAP_SIZE=${SWAP_SIZE}"
+    # Validate selection and partition the selected devices
+    truncate -s 0 ./devices.tmp;
+    for i in "${selection[@]}"; do
+        if [[ $i =~ ^[0-9]+$ ]] && [[ "$i" -ge 1 ]] && [[ "$i" -le "${#devices[@]}" ]]; then
+            partition_device "/dev/${devices[$((i-1))]}" "${i}"
+            echo "/dev/${devices[$((i-1))]}" >> ./devices.tmp
+        else
+            echo "Invalid selection: $i"
+        fi
+    done
+
+    echo "Partitioning complete."
+}
 
 # Check for help option
 if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
@@ -178,35 +215,33 @@ if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
     exit 0
 fi
 
-# Present a menu for the user to select which devices to partition
-echo "Detected storage devices:"
-devices=($(lsblk -o NAME,TRAN,RM,TYPE | grep disk | grep -v "1 disk" | awk '{print $1}'))
-for i in "${!devices[@]}"; do
-    echo "$((i+1))) /dev/${devices[i]}"
-done
+# Main menu for script operations
+main_menu() {
+    echo "Please select an operation:"
+    echo "1) Partition devices"
+    echo "2) Prepare file systems"
+    echo "3) Remount file systems"
+    echo "-----------------------"
+    echo "4) Prepare packages for installation"
+    echo "5) Enter chroot environment"
+    echo "-----------------------"
+    echo "6) Show help"
+    echo "7) Exit"
+    read -p "Enter your choice: " choice
 
-# Ask the user for the devices to partition
-read -p "Enter the numbers of the devices you want to partition (separated by spaces): " input
-selection=($input)
-echo "Partitioning with EFI_SIZE ${EFI_SIZE}, BOOT_SIZE=${BOOT_SIZE}, SWAP_SIZE=${SWAP_SIZE}"
-# Validate selection and partition the selected devices
-truncate -s 0 ./devices.tmp;
-for i in "${selection[@]}"; do
-    if [[ $i =~ ^[0-9]+$ ]] && [[ "$i" -ge 1 ]] && [[ "$i" -le "${#devices[@]}" ]]; then
-        partition_device "/dev/${devices[$((i-1))]}" "${i}"
-        echo "/dev/${devices[$((i-1))]}" >> ./devices.tmp
-    else
-        echo "Invalid selection: $i"
-    fi
-done
+    case "$choice" in
+        1) select_devices;;
+        2) prepare_fs;;
+        3) remount_fs;;
+        4) prepare_pkgs;;
+        5) do_chroot;;
+        6) show_help;;
+        7) exit 0;;
+        *) echo "Invalid choice, please try again."; main_menu;;
+    esac
+}
 
-echo "Partitioning complete."
-
-prepare_fs;
-remount_fs;
-prepare_pkgs;
-do_chroot;
-
+main_menu
 
 
 
