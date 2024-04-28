@@ -172,8 +172,7 @@ prepare_pkgs() {
   echo "Genfstab and debootstrap"
   sudo apt update
   sudo apt install -y arch-install-scripts debootstrap
-  # libnpth0t64,libnpth0,libaio1t64,libaio1
-  sudo debootstrap --include=libnpth0t64,libaio1t64,software-properties-common --components=main,restricted,universe --log-extra-deps --variant=minbase --arch=amd64 noble /mnt http://archive.ubuntu.com/ubuntu/
+  sudo debootstrap --include=software-properties-common --components=main,restricted,universe --log-extra-deps --variant=minbase --arch=amd64 noble /mnt http://archive.ubuntu.com/ubuntu/
   sudo genfstab -U /mnt | sudo tee -a /mnt/etc/fstab > /dev/null
 }
 
