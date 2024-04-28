@@ -13,11 +13,13 @@ fi
 : "${HOSTNAME:=$(read -p "Enter the hostname: " REPLY; echo $REPLY)}"
 : "${GETSSHID:=$(read -p "Enter the ssh-import-id (i.e. gh:username for github): " REPLY; echo $REPLY)}"
 
-apt --fix-broken install
+apt --fix-broken install -y
 apt update -y
 apt upgrade -y
 apt install -y ubuntu-server software-properties-common
 add-apt-repository -y universe
+add-apt-repository -y restricted
+add-apt-repository -y multiverse
 
 echo "# <target name>	<source device>		<key file>	<options>" > /etc/crypttab
 echo "crypt1 UUID=$(blkid -s UUID -o value /dev/disk/by-partlabel/prim1 | tr -d '\n') none luks,discard" >> /etc/crypttab
