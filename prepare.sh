@@ -209,6 +209,20 @@ select_devices() {
     echo "Partitioning complete."
 }
 
+crypt_open() {
+    for CRYPTDEV in /dev/disk/by-partlabel/prim*; do
+        # Extract the identifier from the partition label
+        i=$(echo $CRYPTDEV | grep -o '[0-9]*$')
+        echo "Opening LUKS on ${CRYPTDEV} as crypt${i}..."
+        sudo cryptsetup open "${CRYPTDEV}" "crypt${i}" --type luks2 --key-slot=0 <<< "${CRYPT_PWD}"
+        if [ $? -eq 0 ]; then
+            echo "Successfully opened ${CRYPTDEV} as crypt${i}."
+        else
+            echo "Failed to open ${CRYPTDEV} as crypt${i}."
+        fi
+    done
+}
+
 # Check for help option
 if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
     show_help
@@ -236,12 +250,15 @@ main_menu() {
         4) prepare_pkgs;;
         5) do_chroot;;
         6) show_help;;
-        7) exit 0;;
+        7) crypt_open;;
+        8) exit 0;;
         *) echo "Invalid choice, please try again."; main_menu;;
     esac
 }
 
 main_menu
+
+
 
 
 
