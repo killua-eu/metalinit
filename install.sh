@@ -32,6 +32,7 @@ apt install -y linux-{,image-,headers-}generic linux-firmware \
                dropbear-initramfs cryptsetup-initramfs \
                openssh-server \
                keyutils curl wget parted command-not-found ssh-import-id \
+               netplan.io iputils-ping \
                mc nano jq pastebinit sudo
 
 ssh-import-id "${GETSSHID}"
@@ -43,8 +44,8 @@ cd /etc/dropbear/initramfs
 echo "GRUB_ENABLE_CRYPTODISK=y" > /etc/default/grub.d/cryptodisk.cfg
 echo "GRUB_DISABLE_OS_PROBER=false" > /etc/default/grub.d/osprober.cfg
 
-FILE="/etc/dropbear/initramfs/dropbear.conf"
-OPTIONS_LINE='DROPBEAR_OPTIONS="-I 180 -j -k -p 2222 -s -c cryptroot-unlock"'
+FILE_PATH="/etc/dropbear/initramfs/dropbear.conf"
+OPTIONS_LINE='DROPBEAR_OPTIONS="-I 180 -j -k -p 22 -s -c cryptroot-unlock"'
 
 if ! grep -Fxq "$OPTIONS_LINE" "$FILE_PATH"; then
     sed -i '/^DROPBEAR_OPTIONS=/d' "$FILE_PATH"
@@ -60,12 +61,16 @@ done < "$DEVICE_FILE"
 grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=Ubuntu
 update-grub
 
+cat << EOL | sudo tee /etc/netplan/10-dhcp.yaml
+network:
+  version: 2
+EOL
+
 echo "${HOSTNAME}" > /etc/hostname
-useradd ${USERNAME} -mG users,sudo,adm,plugdev,lxd -s /bin/bash
+useradd ${USERNAME} -mG users,sudo,adm,plugdev -s /bin/bash
 echo "${USERNAME}:${PASSWORD}" | sudo chpasswd
 
-ssh-import-id GETSSHID -o /home/${USERNAME}/.ssh/authorized_keys
-
-
+ssh-import-id "${GETSSHID}" -o /home/${USERNAME}/.ssh/authorized_keys
+chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}/.ssh
 
 
