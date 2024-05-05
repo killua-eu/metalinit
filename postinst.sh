@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # After first boot
-timedatectl set-timezone Europe/Prague
-systemctl enable fstrim.timer
-systemctl enable systemd-timesyncd
-hostnamectl status
-#hostnamectl set-hostname ${HOSTNAME}
-systemctl enable ssh
-systemctl start ssh
+sudo timedatectl set-timezone Europe/Prague
+sudo systemctl enable fstrim.timer
+sudo systemctl enable systemd-timesyncd
+sudo hostnamectl status
+sudo systemctl enable ssh
+sudo systemctl start ssh
+sudo hostnamectl set-hostname

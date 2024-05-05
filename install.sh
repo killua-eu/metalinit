@@ -32,7 +32,7 @@ apt install -y linux-{,image-,headers-}generic linux-firmware \
                dropbear-initramfs cryptsetup-initramfs \
                openssh-server \
                keyutils curl wget parted command-not-found ssh-import-id \
-               netplan.io iputils-ping \
+               netplan.io iputils-ping nfs-common \
                mc nano jq pastebinit sudo
 
 ssh-import-id "${GETSSHID}"
@@ -45,7 +45,7 @@ echo "GRUB_ENABLE_CRYPTODISK=y" > /etc/default/grub.d/cryptodisk.cfg
 echo "GRUB_DISABLE_OS_PROBER=false" > /etc/default/grub.d/osprober.cfg
 
 FILE_PATH="/etc/dropbear/initramfs/dropbear.conf"
-OPTIONS_LINE='DROPBEAR_OPTIONS="-I 180 -j -k -p 22 -s -c cryptroot-unlock"'
+OPTIONS_LINE='DROPBEAR_OPTIONS="-j -k -p 2222 -s -c cryptroot-unlock"'
 
 if ! grep -Fxq "$OPTIONS_LINE" "$FILE_PATH"; then
     sed -i '/^DROPBEAR_OPTIONS=/d' "$FILE_PATH"
